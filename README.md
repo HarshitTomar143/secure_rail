@@ -1,24 +1,57 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# SecureRails - Railway Management System
 
-## Getting Started
+This is a Next.js-based web application for railway management with role-based authentication and dashboard routing.
 
-First, run the development server:
+## Features
+
+- **Role-based Authentication**: Separate login for vendors and admins
+- **Dynamic Dashboard Routing**: Users are redirected to appropriate dashboards based on their role
+- **Admin Dashboard**: Comprehensive management interface for system administrators
+- **Vendor Dashboard**: Dedicated portal for vendor operations and order management
+- **Supabase Integration**: Secure authentication and user profile management
+
+## Setup Instructions
+
+### 1. Install Dependencies
+
+```bash
+npm install
+```
+
+### 2. Environment Configuration
+
+Copy the example environment file and configure your Supabase credentials:
+
+```bash
+cp .env.example .env.local
+```
+
+Edit `.env.local` and add your Supabase project URL and API key.
+
+### 3. Run Development Server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+## Application Structure
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `app/page.js` - Login page with role selection
+- `app/admin/dashboard/page.js` - Admin dashboard
+- `app/vendor/dashboard/page.js` - Vendor dashboard
+- `lib/supabaseClient.js` - Supabase configuration
+
+## Authentication Flow
+
+1. User selects role (Vendor or Admin) on login page
+2. Enters credentials and submits form
+3. System authenticates with Supabase
+4. User profile is fetched to verify role
+5. User is redirected to appropriate dashboard:
+   - Admins → `/admin/dashboard`
+   - Vendors → `/vendor/dashboard`
 
 ## Learn More
 
