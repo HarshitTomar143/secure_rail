@@ -33,23 +33,26 @@ export default function RouteMap({ checkpoints, origin, destination }: RouteMapP
     const completedCheckpoints = checkpoints.filter(cp => cp.location !== null)
     
     const svgContent = `
-      <svg width="100%" height="300" viewBox="0 0 800 300" style="background: #f0f4f8; border-radius: 8px;">
+      <svg width="100%" height="300" viewBox="0 0 900 300" style="background: #f0f4f8; border-radius: 8px;">
         <!-- Route line -->
-        <line x1="100" y1="150" x2="700" y2="150" stroke="#dee2e6" stroke-width="4" stroke-dasharray="10,5" />
+        <line x1="100" y1="150" x2="800" y2="150" stroke="#dee2e6" stroke-width="4" stroke-dasharray="10,5" />
         
-        <!-- Start point -->
+        <!-- Stage 1: Dispatch -->
         <circle cx="100" cy="150" r="15" fill="#28a745" />
-        <text x="100" y="190" text-anchor="middle" fill="#495057" font-size="12" font-weight="600">START</text>
+        <text x="100" y="130" text-anchor="middle" fill="#495057" font-size="10" font-weight="600">STAGE 1</text>
+        <text x="100" y="190" text-anchor="middle" fill="#495057" font-size="12" font-weight="600">DISPATCH</text>
         
-        <!-- Checkpoints -->
+        <!-- Stages 2-4: Checkpoints -->
         ${checkpoints.map((cp, index) => {
           const x = 250 + (index * 150)
           const isCompleted = cp.location !== null
           const color = isCompleted ? '#17a2b8' : '#dee2e6'
+          const stageNum = index + 2  // Stages 2, 3, 4
           
           return `
             <circle cx="${x}" cy="150" r="12" fill="${color}" />
-            <text x="${x}" y="135" text-anchor="middle" fill="#495057" font-size="14" font-weight="600">CP${cp.number}</text>
+            <text x="${x}" y="130" text-anchor="middle" fill="#495057" font-size="10" font-weight="600">STAGE ${stageNum}</text>
+            <text x="${x}" y="145" text-anchor="middle" fill="#495057" font-size="12" font-weight="600">CP${cp.number}</text>
             ${isCompleted ? `
               <text x="${x}" y="190" text-anchor="middle" fill="#6c757d" font-size="10">
                 ${new Date(cp.timestamp!).toLocaleTimeString()}
@@ -58,9 +61,10 @@ export default function RouteMap({ checkpoints, origin, destination }: RouteMapP
           `
         }).join('')}
         
-        <!-- End point -->
-        <circle cx="700" cy="150" r="15" fill="#dc3545" />
-        <text x="700" y="190" text-anchor="middle" fill="#495057" font-size="12" font-weight="600">DEST</text>
+        <!-- Stage 5: Delivery -->
+        <circle cx="800" cy="150" r="15" fill="#dc3545" />
+        <text x="800" y="130" text-anchor="middle" fill="#495057" font-size="10" font-weight="600">STAGE 5</text>
+        <text x="800" y="190" text-anchor="middle" fill="#495057" font-size="12" font-weight="600">DELIVERY</text>
         
         <!-- Progress indicator -->
         ${completedCheckpoints.length > 0 ? `

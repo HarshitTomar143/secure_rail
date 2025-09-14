@@ -109,45 +109,55 @@ export default function BatchList({ batches, transporterId }: BatchListProps) {
             </div>
 
             <div className="checkpoint">
-              <div className="checkpoint-header">Journey Progress</div>
+              <div className="checkpoint-header">Journey Progress (5 Stages)</div>
               
-              {/* Show dispatch info if checkpoint 1 is dispatch */}
-              {cp1 && isDispatchData(cp1) && (
-                <div style={{ 
-                  padding: '0.75rem', 
-                  background: '#d4edda', 
-                  borderRadius: '6px',
-                  marginBottom: '1rem'
-                }}>
-                  <div style={{ fontWeight: 600, color: '#155724' }}>🚚 Dispatched</div>
-                  <div style={{ fontSize: '0.875rem', color: '#155724', marginTop: '0.25rem' }}>
-                    {formatCheckpointTime(cp1)} from {cp1.address || 'Dispatch point'}
-                  </div>
+              {/* Stage 1: Dispatch Status */}
+              <div style={{ 
+                padding: '0.75rem', 
+                background: batch.status !== 'pending' ? '#d4edda' : '#f8f9fa', 
+                borderRadius: '6px',
+                marginBottom: '1rem'
+              }}>
+                <div style={{ fontWeight: 600, color: batch.status !== 'pending' ? '#155724' : '#6c757d' }}>
+                  🚚 Stage 1: Dispatch {batch.status !== 'pending' ? '✓' : '(Pending)'}
                 </div>
-              )}
+                {batch.status !== 'pending' && (
+                  <div style={{ fontSize: '0.875rem', color: '#155724', marginTop: '0.25rem' }}>
+                    Status: {batch.status}
+                  </div>
+                )}
+              </div>
               
-              {/* Show delivery info if checkpoint 3 is delivery */}
-              {cp3 && isDeliveryData(cp3) && (
+              {/* Stage 5: Delivery Status (show if delivered) */}
+              {batch.status === 'delivered' && (
                 <div style={{ 
                   padding: '0.75rem', 
                   background: '#cce5ff', 
                   borderRadius: '6px',
                   marginBottom: '1rem'
                 }}>
-                  <div style={{ fontWeight: 600, color: '#004085' }}>📍 Delivered</div>
-                  <div style={{ fontSize: '0.875rem', color: '#004085', marginTop: '0.25rem' }}>
-                    {formatCheckpointTime(cp3)} at {cp3.address || 'Delivery point'}
+                  <div style={{ fontWeight: 600, color: '#004085' }}>
+                    📍 Stage 5: Delivered ✓
                   </div>
+                  {cp3 && isDeliveryData(cp3) && (
+                    <div style={{ fontSize: '0.875rem', color: '#004085', marginTop: '0.25rem' }}>
+                      {formatCheckpointTime(cp3)} at {cp3.address || 'Delivery point'}
+                    </div>
+                  )}
                 </div>
               )}
               
+              <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem', fontWeight: 600, color: '#495057' }}>
+                Stages 2-4: Transit Checkpoints
+              </div>
               <div className="checkpoint-grid">
                 <div className={`checkpoint-item ${cp1 ? 'checkpoint-completed' : ''}`}>
-                  <div className="checkpoint-number">1</div>
+                  <div style={{ fontSize: '0.75rem', color: '#6c757d' }}>Stage 2</div>
+                  <div className="checkpoint-number">CP 1</div>
                   <div className="checkpoint-status">
                     {cp1 ? 'Completed' : 'Pending'}
                   </div>
-                  {cp1 && (
+                  {cp1 && !isDispatchData(cp1) && (
                     <div className="checkpoint-details">
                       <div>{formatCheckpointTime(cp1)}</div>
                       <div>{formatCheckpointLocation(cp1)}</div>
@@ -156,7 +166,8 @@ export default function BatchList({ batches, transporterId }: BatchListProps) {
                 </div>
 
                 <div className={`checkpoint-item ${cp2 ? 'checkpoint-completed' : ''}`}>
-                  <div className="checkpoint-number">2</div>
+                  <div style={{ fontSize: '0.75rem', color: '#6c757d' }}>Stage 3</div>
+                  <div className="checkpoint-number">CP 2</div>
                   <div className="checkpoint-status">
                     {cp2 ? 'Completed' : 'Pending'}
                   </div>
@@ -168,12 +179,13 @@ export default function BatchList({ batches, transporterId }: BatchListProps) {
                   )}
                 </div>
 
-                <div className={`checkpoint-item ${cp3 ? 'checkpoint-completed' : ''}`}>
-                  <div className="checkpoint-number">3</div>
+                <div className={`checkpoint-item ${cp3 && !isDeliveryData(cp3) ? 'checkpoint-completed' : ''}`}>
+                  <div style={{ fontSize: '0.75rem', color: '#6c757d' }}>Stage 4</div>
+                  <div className="checkpoint-number">CP 3</div>
                   <div className="checkpoint-status">
-                    {cp3 ? 'Completed' : 'Pending'}
+                    {cp3 && !isDeliveryData(cp3) ? 'Completed' : 'Pending'}
                   </div>
-                  {cp3 && (
+                  {cp3 && !isDeliveryData(cp3) && (
                     <div className="checkpoint-details">
                       <div>{formatCheckpointTime(cp3)}</div>
                       <div>{formatCheckpointLocation(cp3)}</div>

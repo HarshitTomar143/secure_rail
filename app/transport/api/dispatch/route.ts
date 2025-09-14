@@ -28,12 +28,15 @@ export async function POST(request: Request) {
     }
 
     // Check if transport log exists
-    const { data: existingLog } = await supabase
+    console.log('Checking for existing transport log:', { batchUid, transporterId })
+    const { data: existingLog, error: existingError } = await supabase
       .from('transport_logs')
       .select('*')
       .eq('batch_id', batchUid)
       .eq('transporter_id', transporterId)
       .single()
+    
+    console.log('Existing log:', existingLog, 'Error:', existingError)
 
     if (existingLog) {
       // Update existing log to mark as dispatched with location
@@ -48,7 +51,9 @@ export async function POST(request: Request) {
         .from('transport_logs')
         .update({
           status: 'dispatched',
-          checkpoints_1: JSON.stringify(dispatchData) // Store dispatch info in checkpoint 1
+          destination: vendor.factory_location || address,
+          // Store dispatch info separately, not in checkpoint
+          // We can use the destination field to store dispatch details
         })
         .eq('batch_id', batchUid)
         .eq('transporter_id', transporterId)
@@ -75,8 +80,8 @@ export async function POST(request: Request) {
           batch_id: batchUid,
           transporter_id: transporterId,
           status: 'dispatched',
-          destination: vendor.factory_location || 'TBD',
-          checkpoints_1: JSON.stringify(dispatchData)
+          destination: vendor.factory_location || address
+          // Checkpoints remain null until actually reached
         })
 
       if (insertError) {

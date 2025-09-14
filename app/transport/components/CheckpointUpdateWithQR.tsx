@@ -104,12 +104,19 @@ export default function CheckpointUpdateWithQR({
       })
       
       if (result.data) {
-        // Verify the scanned QR matches the assigned batch
-        if (result.data === batchId) {
-          setScannedBatchId(result.data)
+        // Strict verification: scanned QR MUST match the assigned batch
+        const scannedId = result.data.trim()
+        const expectedId = batchId.trim()
+        
+        if (scannedId === expectedId) {
+          setScannedBatchId(scannedId)
           setStep('confirm')
         } else {
-          setError(`Scanned batch (${result.data}) does not match assigned batch (${batchId})`)
+          setError(`❌ Wrong Batch QR! Scanned: ${scannedId}, Expected: ${expectedId}. Please scan the correct batch QR.`)
+          // Reset after showing error
+          setTimeout(() => {
+            setError('')
+          }, 5000)
         }
       } else {
         setError('No QR code found in the image')
@@ -141,6 +148,8 @@ export default function CheckpointUpdateWithQR({
         timestamp: new Date().toISOString(),
         verifiedByQR: true
       }
+
+      console.log('Sending checkpoint data:', checkpointData)
 
       const response = await fetch('/transport/api/checkpoint', {
         method: 'POST',
