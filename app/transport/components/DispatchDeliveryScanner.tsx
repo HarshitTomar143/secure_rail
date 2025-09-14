@@ -22,17 +22,63 @@ export default function DispatchDeliveryScanner({
   const [loading, setLoading] = useState(false)
   const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null)
   const [address, setAddress] = useState('')
+  const [locationPermission, setLocationPermission] = useState<'prompt' | 'granted' | 'denied' | 'checking'>('checking')
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Check location permission on component mount
+  useEffect(() => {
+    const checkLocationPermission = async () => {
+      if ('permissions' in navigator) {
+        try {
+          const permission = await navigator.permissions.query({ name: 'geolocation' })
+          setLocationPermission(permission.state as any)
+          
+          permission.addEventListener('change', () => {
+            setLocationPermission(permission.state as any)
+          })
+        } catch (err) {
+          console.log('Could not check permission status:', err)
+          setLocationPermission('prompt')
+        }
+      } else {
+        setLocationPermission('prompt')
+      }
+    }
+    
+    checkLocationPermission()
+  }, [])
+
+  const requestLocationPermission = async () => {
+    setError('')
+    try {
+      await fetchLocationWithAddress()
+      setLocationPermission('granted')
+    } catch (err: any) {
+      console.error('Location permission request failed:', err)
+      setError(typeof err === 'string' ? err : 'Failed to get location permission')
+    }
+  }
 
   const fetchLocationWithAddress = async () => {
     return new Promise<void>((resolve, reject) => {
       if (!navigator.geolocation) {
-        reject('Geolocation is not supported')
+        reject('Geolocation is not supported by your browser. Please use a modern browser with location support.')
         return
       }
 
+      console.log('Requesting location...')
+      // Clear any previous location data
+      setLocation(null)
+      setAddress('')
+
       navigator.geolocation.getCurrentPosition(
         async (position) => {
+          console.log('Location obtained successfully:', {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            accuracy: position.coords.accuracy
+          })
+          
           const coords = {
             latitude: position.coords.latitude,
             longitude: position.coords.longitude
@@ -50,18 +96,42 @@ export default function DispatchDeliveryScanner({
             }
           } catch (err) {
             console.log('Could not get address:', err)
-            setAddress(`${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)}`)
+            setAddress(`Lat: ${coords.latitude.toFixed(6)}, Lon: ${coords.longitude.toFixed(6)}`)
           }
           
           resolve()
         },
         (error) => {
-          reject('Unable to get location')
+          let errorMessage = ''
+          // Log full error details for debugging
+          console.error('Geolocation error details:', {
+            code: error.code,
+            message: error.message,
+            PERMISSION_DENIED: error.PERMISSION_DENIED,
+            POSITION_UNAVAILABLE: error.POSITION_UNAVAILABLE,
+            TIMEOUT: error.TIMEOUT
+          })
+          
+          switch(error.code) {
+            case 1: // error.PERMISSION_DENIED
+              errorMessage = 'Location permission denied. Please enable location access in your browser settings and refresh the page.'
+              setLocationPermission('denied')
+              break
+            case 2: // error.POSITION_UNAVAILABLE
+              errorMessage = 'Location information is unavailable. Please check if location services are enabled on your device.'
+              break
+            case 3: // error.TIMEOUT
+              errorMessage = 'Location request timed out. Please try again.'
+              break
+            default:
+              errorMessage = `Unable to get location. Error code: ${error.code}, Message: ${error.message || 'Unknown error'}`
+          }
+          reject(errorMessage)
         },
         {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 0
+          enableHighAccuracy: false, // Changed to false for faster response
+          timeout: 30000, // Increased to 30 seconds
+          maximumAge: 5000 // Allow cached position up to 5 seconds old
         }
       )
     })
@@ -76,13 +146,41 @@ export default function DispatchDeliveryScanner({
       return
     }
 
+    // Check if location permission is denied
+    if (locationPermission === 'denied') {
+      setError('Location access is required. Please enable location in your browser settings and refresh the page.')
+      return
+    }
+
     setScanning(true)
     setError('')
     setResult('')
 
     try {
-      // Get location while scanning
-      await fetchLocationWithAddress()
+      // Get location first - it's mandatory
+      try {
+        await fetchLocationWithAddress()
+      } catch (locationError: any) {
+        // Location is mandatory, so we must stop here
+        setError(locationError || 'Location is required for tracking. Please enable location access and try again.')
+        setScanning(false)
+        // Reset file input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = ''
+        }
+        return
+      }
+
+      // Only proceed with QR scanning if we have location
+      if (!location) {
+        setError('Location could not be determined. Please ensure GPS/location services are enabled and try again.')
+        setScanning(false)
+        // Reset file input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = ''
+        }
+        return
+      }
 
       const result = await QrScanner.scanImage(file, {
         returnDetailedScanResult: true
@@ -94,11 +192,15 @@ export default function DispatchDeliveryScanner({
       } else {
         setError('No QR code found in the image')
       }
-    } catch (err) {
-      setError('Failed to scan QR code or get location. Please try again.')
+    } catch (err: any) {
+      setError(err.message || 'Failed to scan QR code. Please try again.')
       console.error('QR scan error:', err)
     } finally {
       setScanning(false)
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
     }
   }
 
@@ -295,6 +397,59 @@ export default function DispatchDeliveryScanner({
               </span>
             </div>
 
+            {/* Location Permission Warning */}
+            {locationPermission === 'denied' && (
+              <div style={{
+                padding: '1rem',
+                background: '#f8d7da',
+                border: '1px solid #f5c6cb',
+                borderRadius: '8px',
+                marginBottom: '1rem',
+                color: '#721c24'
+              }}>
+                <strong>⚠️ Location Access Required</strong>
+                <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.875rem' }}>
+                  Location tracking is mandatory for transport operations. Please:
+                </p>
+                <ol style={{ margin: '0.5rem 0 0 0', paddingLeft: '1.5rem', fontSize: '0.875rem' }}>
+                  <li>Click on the lock/info icon in your browser's address bar</li>
+                  <li>Find "Location" in the permissions</li>
+                  <li>Change it to "Allow"</li>
+                  <li>Refresh this page</li>
+                </ol>
+              </div>
+            )}
+
+            {locationPermission === 'prompt' && (
+              <div style={{
+                padding: '1rem',
+                background: '#fff3cd',
+                border: '1px solid #ffeeba',
+                borderRadius: '8px',
+                marginBottom: '1rem',
+                color: '#856404'
+              }}>
+                <strong>📍 Location Permission Required</strong>
+                <p style={{ margin: '0.5rem 0', fontSize: '0.875rem' }}>
+                  We need your location to track shipments. Your browser will ask for permission.
+                </p>
+                <button
+                  onClick={requestLocationPermission}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    background: '#0055aa',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '0.875rem'
+                  }}
+                >
+                  Enable Location Access
+                </button>
+              </div>
+            )}
+
             {error && (
               <div className="alert alert-error">
                 {error}
@@ -313,6 +468,10 @@ export default function DispatchDeliveryScanner({
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
               onClick={() => fileInputRef.current?.click()}
+              style={{
+                pointerEvents: locationPermission === 'denied' ? 'none' : 'auto',
+                opacity: locationPermission === 'denied' ? 0.5 : 1
+              }}
             >
               <div className="upload-icon">📷</div>
               <div className="upload-text">
@@ -329,6 +488,7 @@ export default function DispatchDeliveryScanner({
               accept="image/*"
               onChange={handleFileUpload}
               style={{ display: 'none' }}
+              disabled={locationPermission === 'denied'}
             />
 
             {location && (
